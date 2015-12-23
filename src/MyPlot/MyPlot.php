@@ -23,28 +23,21 @@ use pocketmine\utils\Config;
 use pocketmine\utils\TextFormat;
 use pocketmine\level\Level;
 use MyPlot\provider\SQLiteDataProvider;
+use MyPlot\provider\MYSQLDataProvider;
 use MyPlot\provider\EconomyProvider;
 
 class MyPlot extends PluginBase implements Listener
 {
     /** @var MyPlot */
     private static $instance;
-
     /** @var PlotLevelSettings[] */
     private $levels = [];
-
     /** @var DataProvider */
     private $dataProvider;
-
     /** @var EconomyProvider */
     private $economyProvider;
-
-    private $msgs;
-
-
-    public function onLoad() {
-    	   $this->msgs = new LangMsgs($this);
-    }
+    /** @var usesVotingAPI */
+    private $usesVotingAPI;
 
     /**
      * @api
@@ -73,7 +66,17 @@ class MyPlot extends PluginBase implements Listener
     public function getEconomyProvider() {
         return $this->economyProvider;
     }
-
+    
+    /**
+     * Returns status of voting API in use
+     *
+     * @api
+     * @return bool
+     */
+     public function getUsesVotingAPI() {
+	return $this->usesVotingAPI;
+     }
+     
     /**
      * Returns a PlotLevelSettings object which contains all the settings of a level
      *
@@ -151,8 +154,13 @@ class MyPlot extends PluginBase implements Listener
      * @param int $limitXZ
      * @return Plot|null
      */
-    public function getNextFreePlot($levelName, $limitXZ = 20) {
-        return $this->dataProvider->getNextFreePlot($levelName, $limitXZ);
+    public function getNextFreePlot($levelName, $limitXZ = 20, $player = null) {
+	if($this->dataProvider instanceof \MyPlot\provider\MYSQLDataProvider && ! is_null($player)) {
+	    $plot = $this->getPlotByPosition($player->getPosition());
+	    return $this->dataProvider->getNextFreePlot($levelName, $limitXZ, $plot->X, $plot->Z);
+	} else {
+	    return $this->dataProvider->getNextFreePlot($levelName, $limitXZ);
+	}
     }
 
     /**
@@ -165,6 +173,7 @@ class MyPlot extends PluginBase implements Listener
     public function getPlotByPosition(Position $position) {
         $x = $position->x;
         $z = $position->z;
+        
         $levelName = $position->level->getName();
 
         $plotLevel = $this->getLevelSettings($levelName);
@@ -176,6 +185,14 @@ class MyPlot extends PluginBase implements Listener
         $roadWidth = $plotLevel->roadWidth;
         $totalSize = $plotSize + $roadWidth;
 
+        $halfRoadWidth = round($roadWidth / 2); // the road width that concerns this plot
+        // mwvent - added offset of half a road width
+        $x -= $halfRoadWidth;
+        $z -= $halfRoadWidth;
+        
+        $X = ceil(($x - $plotSize + 1) / $totalSize); // dont forget the +1 is the offset in clearplottask too
+        $Z = ceil(($z - $plotSize + 1) / $totalSize);
+        /* 
         if ($x >= 0) {
             $X = floor($x / $totalSize);
             $difX = $x % $totalSize;
@@ -191,11 +208,12 @@ class MyPlot extends PluginBase implements Listener
             $Z = ceil(($z - $plotSize + 1) / $totalSize);
             $difZ = abs(($z - $plotSize + 1) % $totalSize);
         }
-
+        */
+	/* Removed to allow road building
         if (($difX > $plotSize - 1) or ($difZ > $plotSize - 1)) {
             return null;
         }
-
+	*/
         return $this->dataProvider->getPlot($levelName, $X, $Z);
     }
 
@@ -237,9 +255,15 @@ class MyPlot extends PluginBase implements Listener
         $pos = $this->getPlotPosition($plot);
         $plotSize = $plotLevel->plotSize;
         $pos->x += floor($plotSize / 2);
-        $pos->z -= 1;
+        $pos->z += floor($plotSize / 2);
         $pos->y += 1;
-        $player->teleport($pos);
+        $safepos = $player->getLevel()->getSafeSpawn($pos);
+        if( ! $safepos ) {
+	    $player->teleport($pos);
+        } else {
+	    $player->teleport($safepos);
+        }
+        
         return true;
     }
 
@@ -259,11 +283,6 @@ class MyPlot extends PluginBase implements Listener
         $task = new ClearPlotTask($this, $plot, $issuer, $maxBlocksPerTick);
         $task->onRun(0);
         return true;
-    }
-
-    public function getMessage($node, $vars)
-    {
-        return $this->msgs->getMessage($node, $vars);
     }
 
     /**
@@ -375,8 +394,13 @@ class MyPlot extends PluginBase implements Listener
         $cacheSize = $this->getConfig()->get("PlotCacheSize");
         switch (strtolower($this->getConfig()->get("DataProvider"))) {
             case "sqlite":
+                $this->dataProvider = new SQLiteDataProvider($this, $cacheSize);
+                break;
             default:
                 $this->dataProvider = new SQLiteDataProvider($this, $cacheSize);
+                break;
+            case "mysql":
+		$this->dataProvider = new MYSQLDataProvider($this, $cacheSize);
                 break;
         }
 
@@ -390,6 +414,29 @@ class MyPlot extends PluginBase implements Listener
             }
         } else {
             $this->economyProvider = null;
+        }
+        
+        $this->usesVotingAPI = false;
+        if ($this->getConfig()->get("UseMPServers_voting") == true) {
+	    // validate api key
+	    $votingAPIKey = $this->getConfig()->get("MPServers_voting_API_key");
+	    $url = "http://minecraftpocket-servers.com/api/?object=servers&element=detail";
+	    $url .= "&key=" . urlencode($votingAPIKey);
+	    $response_raw = file_get_contents($url);
+	    $response = json_decode($response_raw);
+	    if(json_last_error() != JSON_ERROR_NONE) {
+		$err = TextFormat::RED. "Could not validate your minecraftpocket-servers.com API key!";
+		$err .= " Server response was '" . TextFormat::YELLOW . $response_raw ."'";
+		$this->getLogger()->warning($err);
+	    } elseif (!isset($response->name)) {
+		$err = TextFormat::RED. "Could not validate your minecraftpocket-servers.com API key!";
+		$err .= " Server response was '" . TextFormat::YELLOW . $response_raw ."'";
+		$this->getLogger()->warning($err);
+	    } else {
+		$infoMessage = "Voting enabled for " . $response->name;
+		$this->getLogger()->info(TextFormat::GREEN.$infoMessage);
+		$this->usesVotingAPI = true;
+	    }
         }
     }
 
@@ -409,19 +456,7 @@ class MyPlot extends PluginBase implements Listener
         $this->dataProvider->close();
         $this->getLogger()->info(TextFormat::GREEN."Saving plots");
         $this->getLogger()->info(TextFormat::BLUE."Disabled the plot framework!");
-    }
-
- public function getConfigValue($key)
-    {
-        $value = $this->getConfig()->getNested($key);
-
-        if($value === null)
-        {
-            $this->getLogger()->warning($this->getMessage("Something went wrong with MyPlot config fetching...", $key));
-
-            return null;
-        }
-
-        return $value;
+        $this->getLogger()->critical(TextFormat::RED."Shutting down to protect plots");
+        $this->getServer()->shutdown();
     }
 }

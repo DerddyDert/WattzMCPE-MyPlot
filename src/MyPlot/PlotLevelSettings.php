@@ -10,7 +10,7 @@ class PlotLevelSettings
     public $roadBlock, $wallBlock, $plotFloorBlock, $plotFillBlock, $bottomBlock;
     /** @var int */
     public $roadWidth, $plotSize, $groundHeight, $maxPlotsPerPlayer, $claimPrice, $clearPrice,
-            $disposePrice, $resetPrice;
+            $disposePrice, $resetPrice, $freePlotsBeforeVoting;
 
     public function __construct($name, $settings = []) {
         $this->name = $name;
@@ -28,6 +28,7 @@ class PlotLevelSettings
             $this->clearPrice = self::parseNumber($settings, "ClearPrice", 0);
             $this->disposePrice = self::parseNumber($settings, "DisposePrice", 0);
             $this->resetPrice = self::parseNumber($settings, "ResetPrice", 0);
+            $this->freePlotsBeforeVoting = self::parseNumber($settings, "FreePlotsBeforeVoting", 1);
         }
     }
 

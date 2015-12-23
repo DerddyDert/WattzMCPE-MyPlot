@@ -28,21 +28,38 @@ class InfoSubCommand extends SubCommand
     }
 
     public function execute(CommandSender $sender, array $args) {
-        if (!empty($args)) {
-            return false;
-        }
         $player = $sender->getServer()->getPlayer($sender->getName());
         $plot = $this->getPlugin()->getPlotByPosition($player->getPosition());
         if ($plot === null) {
             $sender->sendMessage(TextFormat::RED . "You are not standing inside a plot");
             return true;
         }
-        $sender->sendMessage(TextFormat::DARK_GREEN . "Info about " . TextFormat::WHITE . $plot);
-        $sender->sendMessage(TextFormat::DARK_GREEN. "Name: " . TextFormat::WHITE . $plot->name);
-        $sender->sendMessage(TextFormat::DARK_GREEN. "Owner: " . TextFormat::WHITE . $plot->owner);
-        $helpers = implode(", ", $plot->helpers);
-        $sender->sendMessage(TextFormat::DARK_GREEN. "Helpers: " . TextFormat::WHITE . $helpers);
-        $sender->sendMessage(TextFormat::DARK_GREEN. "Biome: " . TextFormat::WHITE . $plot->biome);
+        
+        $msg = TextFormat::DARK_GREEN . TextFormat::WHITE . $plot;
+        
+        if( $plot->owner == "" ) {
+	    		$msg .= " " . TextFormat::DARK_RED. " Unclaimed";
+	    		$sender->sendMessage($msg);
+		} else {
+			if( isset($args[0]) ) {
+				$msg .= " " . TextFormat::DARK_GREEN . "Owner: " . TextFormat::WHITE . $plot->owner;
+				if($plot->name != "") {
+					$msg .= " " . TextFormat::DARK_BLUE . $plot->name;
+				}
+				if( count($plot->helpers) > 0 ) {
+					if($plot->helpers[0] != "") {
+						$msg .= " " . TextFormat::DARK_GREEN . " with " .  implode(", ", $plot->helpers);
+					}
+				}
+				$sender->sendMessage($msg);
+			} else {
+			    $sender->sendMessage(TextFormat::DARK_GREEN. "Name: " . TextFormat::WHITE . $plot->name);
+			    $sender->sendMessage(TextFormat::DARK_GREEN. "Owner: " . TextFormat::WHITE . $plot->owner);
+			    $helpers = implode(", ", $plot->helpers);
+			    $sender->sendMessage(TextFormat::DARK_GREEN. "Helpers: " . TextFormat::WHITE . $helpers);
+			    $sender->sendMessage(TextFormat::DARK_GREEN. "Biome: " . TextFormat::WHITE . $plot->biome);
+			}
+		}
         return true;
     }
 }

@@ -17,68 +17,48 @@
 #    |__|                                                     |__|    
 #                                                                     
 #
-
-####################################################################
-
-
-# The language that should be used in MyPlot
-# Available languages: en, pol
-#
-# English language pack by @Exxarion
-# Polish language pack by @Jelly9912
-# Italian language pack by @AryToNeX
-# Vietnamese language pack by @doducquang and @daany123
-#
-# !== LANGUAGE SYSTEM UNFINISHED. THIS OPTION WILL NOT WORK, AS OF NOW. ==!
-language: en
-
-# The maximum amount of plots one can have globally.
-MaxPlotsPerPlayer: 5
-
-# The data provider where plot data is stored.
-# There is currently only one data provider: sqlite.
-DataProvider: 'sqlite'
-
-# Use an economy with MyPlot. This will allow for plot pricing such as claiming, clearing, etc.
-# Currently supported economy plugins: Economy$, PocketMoney
-# MyPlot will use any economy plugin found on the server.
-# Be sure not to use more than 1 economy plugin!
-UseEconomy: false
-
-# Amount of plots to be cached.
-# Increasing this number might improve performance, but also increase memory usage.
+MaxPlotsPerPlayer: 5 
+#The maximum amount of plots one can have
+DataProvider: 'sqlite' 
+#The data provider where plot data is stored. Do not mess with this if you do not know how it works.
+UseEconomy: false 
+#Use an economy plugin to add prices to things like claiming (Below)
+UseMPServers_voting: false
+#Use minecraftpocket-servers.com voting API to claim plots (Below)
+MPServers_voting_API_key: none
+#The API key for your server on minecraftpocket-servers.com
+MPServers_voting_direct_URL: none
+#The url shown to users to visit to do a vote
+FreePlotsBeforeVoting: 1
+#How many plots can be claimed before voting is required (UseMPServers_voting must be set to 'true')
 PlotCacheSize: 100
 
-
-# These settings will be used when creating a new world.
 DefaultWorld:
-
-  # The maximum amount of plots that one have in this world.
-  MaxPlotsPerPlayer: 2
-
-  # How much it costs to claim a plot (Economy must be set to 'true')
-  ClaimPrice: 50
-  # How much it costs to clear a plot (Economy must be set to 'true')
-  ClearPrice: 0
-  # How much it costs to dispose a plot (Economy must be set to 'true')
-  DisposePrice: -50
-  # How much it costs to reset a plot (Economy must be set to 'true')
-  ResetPrice: -50
-
-  # The size of a plot
-  PlotSize: 22
-  # The height of a plot
-  GroundHeight: 64
-  # The width of the road
+  MaxPlotsPerPlayer: 5 
+  #The maximum amount of plots that one can own
+  ClaimPrice: 0 
+  #How much it costs to claim a plot (Economy must be set to 'true')
+  ClearPrice: 0 
+  #How much it costs to clear a plot (Economy must be set to 'true')
+  DisposePrice: 0 
+  #How much it costs to dispose a plot (Economy must be set to 'true')
+  ResetPrice: 0 
+  #How much it costs to reset a plot (Economy must be set to 'true)
+  FreePlotsBeforeVoting: 1
+  #How many plots can be claimed before voting is required (UseMPServers_voting must be set to 'true')
+  RoadBlock: '5' 
+  #The block that the road is made of (Default is Oak Planks)
   RoadWidth: 7
-
-  # The block that the road is made of (Default is Oak Planks)
-  RoadBlock: '5'
-  # The block that plot walls are made of (Default is Stone Slabs)
+  #The width of the road
   WallBlock: '44'
-  # The block used as the plot floor (Default is Grass)
+  #The block that plot walls are made of (Default is Stone Slabs)
   PlotFloorBlock: '2'
-  # The block that fills the rest of the plot (Default is Dirt)
+  #The block used as the plot floor (Default is Grass)
   PlotFillBlock: '3'
-  # The block at the bottom (Default is Bedrock)
+  #The block that fills the rest of the plot (Default is Dirt)
+  PlotSize: 22
+  #How large a plot is
+  GroundHeight: 64
+  #How high a plot is
   BottomBlock: '7'
+  #The block at the way bottom (Default is Bedrock)

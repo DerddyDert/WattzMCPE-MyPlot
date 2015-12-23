@@ -8,6 +8,7 @@ use pocketmine\utils\TextFormat;
 class GenerateSubCommand extends SubCommand
 {
     public function canUse(CommandSender $sender) {
+	return false;
         return $sender->hasPermission("myplot.command.generate");
     }
 

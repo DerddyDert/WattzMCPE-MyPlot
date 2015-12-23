@@ -12,6 +12,8 @@ use pocketmine\utils\Config;
 use pocketmine\event\block\BlockPlaceEvent;
 use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\player\PlayerInteractEvent;
+use pocketmine\event\player\PlayerMoveEvent;
+use pocketmine\command\Command;
 
 class EventListener implements Listener
 {
@@ -65,6 +67,47 @@ class EventListener implements Listener
 
     public function onPlayerInteract(PlayerInteractEvent $event) {
         $this->onEventOnBlock($event);
+    }
+    
+    private $playerLocationTracker = array();
+    
+    public function onPlayerMove(PlayerMoveEvent $event) {
+	$player = $event->getPlayer();
+	$pname = strtolower($player->getName());
+	$levelName = $player->getLevel()->getName();
+	$players_in_tracker = isset($this->playerLocationTracker[$pname]);
+	
+        if (!$this->plugin->isLevelLoaded($levelName)) {
+	    if($players_in_tracker) {
+		unset( $this->playerLocationTracker[$pname] );
+	    }
+            return;
+        }
+        $plot = $this->plugin->getPlotByPosition($player->getPosition());
+        
+        
+        // if users not in a plot make sure unset
+        if( is_null($plot) && $players_in_tracker ) {
+	    unset( $this->playerLocationTracker[$pname] );
+	    return;
+        }
+        if( is_null($plot) ) {
+	    return;
+        }
+        
+        // if user was not previously tracked then save pos and return
+        if( ! $players_in_tracker && !is_null($plot)) {
+	    $this->playerLocationTracker[$pname] = $plot;
+	    $this->plugin->getServer()->dispatchCommand($player, "p info summary");
+	    return;
+        }
+        
+        // if user has moved
+        if( ( $plot->X != $this->playerLocationTracker[$pname]->X ) || ( $plot->Z != $this->playerLocationTracker[$pname]->Z ) ) {
+            $this->playerLocationTracker[$pname] = $plot;
+	    $this->plugin->getServer()->dispatchCommand($player, "p info summary");
+	    return;
+        }
     }
 
     public function onBlockUpdate(BlockUpdateEvent $event) {
