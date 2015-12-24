@@ -19,6 +19,9 @@ use MyPlot\subcommand\RemoveHelperSubCommand;
 use MyPlot\subcommand\AutoSubCommand;
 use MyPlot\subcommand\BiomeSubCommand;
 use MyPlot\subcommand\NameSubCommand;
+use MyPlot\subcommand\LockSubCommand;
+use MyPlot\subcommand\UnlockSubCommand;
+use MyPlot\subcommand\WarpSubCommand;
 
 class Commands extends PluginCommand
 {
@@ -46,6 +49,9 @@ class Commands extends PluginCommand
         $this->loadSubCommand(new BiomeSubCommand($plugin));
         $this->loadSubCommand(new HomeSubCommand($plugin));
         $this->loadSubCommand(new NameSubCommand($plugin));
+        $this->loadSubCommand(new LockSubCommand($plugin));
+        $this->loadSubCommand(new UnlockSubCommand($plugin));
+        $this->loadSubCommand(new WarpSubCommand($plugin));
     }
 
     private function loadSubCommand(Subcommand $command) {

@@ -35,14 +35,16 @@ class InfoSubCommand extends SubCommand
             return true;
         }
         
-        $msg = TextFormat::DARK_GREEN . TextFormat::WHITE . $plot;
+        
         
         if( $plot->owner == "" ) {
 	    		$msg .= " " . TextFormat::DARK_RED. " Unclaimed";
 	    		$sender->sendMessage($msg);
 		} else {
 			if( isset($args[0]) ) {
-				$msg .= " " . TextFormat::DARK_GREEN . "Owner: " . TextFormat::WHITE . $plot->owner;
+                                $msg = TextFormat::DARK_GREEN . "Plot " . TextFormat::WHITE . $plot->id;
+                                $msg .= " ($plot->X , $plot->Z) ";
+				$msg .= TextFormat::DARK_GREEN . "Owner: " . TextFormat::WHITE . $plot->owner;
 				if($plot->name != "") {
 					$msg .= " " . TextFormat::DARK_BLUE . $plot->name;
 				}
@@ -53,11 +55,15 @@ class InfoSubCommand extends SubCommand
 				}
 				$sender->sendMessage($msg);
 			} else {
+                            $pos = " ($plot->X , $plot->Z) ";
+                            $sender->sendMessage(TextFormat::DARK_GREEN. "Position: " . TextFormat::WHITE . $pos);
+                            $sender->sendMessage(TextFormat::DARK_GREEN. "Plot Number: " . TextFormat::WHITE . $plot->id);
 			    $sender->sendMessage(TextFormat::DARK_GREEN. "Name: " . TextFormat::WHITE . $plot->name);
 			    $sender->sendMessage(TextFormat::DARK_GREEN. "Owner: " . TextFormat::WHITE . $plot->owner);
 			    $helpers = implode(", ", $plot->helpers);
 			    $sender->sendMessage(TextFormat::DARK_GREEN. "Helpers: " . TextFormat::WHITE . $helpers);
 			    $sender->sendMessage(TextFormat::DARK_GREEN. "Biome: " . TextFormat::WHITE . $plot->biome);
+                            
 			}
 		}
         return true;

@@ -12,7 +12,7 @@ class HomeSubCommand extends SubCommand
     }
 
     public function getUsage() {
-        return "[plot number]";
+        return "[home number from /p list]";
     }
 
     public function getName() {
@@ -20,7 +20,7 @@ class HomeSubCommand extends SubCommand
     }
 
     public function getDescription() {
-        return "Teleport to your plot home. Use plot number if multiple homes";
+        return "Teleport to your plot home. Use /p list for home numbers";
     }
 
     public function getAliases() {

@@ -14,6 +14,7 @@ use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\player\PlayerInteractEvent;
 use pocketmine\event\player\PlayerMoveEvent;
 use pocketmine\command\Command;
+use pocketmine\utils\TextFormat;
 
 class EventListener implements Listener
 {
@@ -165,15 +166,48 @@ class EventListener implements Listener
         if (!$this->plugin->isLevelLoaded($levelName)) {
             return;
         }
-        $plot = $this->plugin->getPlotByPosition($event->getBlock());
-        if ($plot !== null) {
-            $username = $event->getPlayer()->getName();
-            if ($plot->owner == $username or $plot->isHelper($username) or $event->getPlayer()->hasPermission("myplot.admin.build.plot")) {
-                return;
-            }
-        } elseif ($event->getPlayer()->hasPermission("myplot.admin.build.road")) {
+        
+        $block = $event->getBlock();
+        if($block->x==0 && $block->y == 0 && $block->z == 0 ) {
+            // not sure what fires these events but they happen all the
+            // time. Lets cancel the event and ignore them!
+            $event->setCancelled(true);
             return;
         }
-        $event->setCancelled(true);
+        
+        $plot = $this->plugin->getPlotByPosition($block);
+        
+        if ($plot == null) {
+            // this should never get called because plots have been
+            // extended to include the road around in this particular 
+            // fork of MyPlot
+            $event->setCancelled(true);
+            return;
+        }
+        
+        $username = $event->getPlayer()->getName();
+
+        $hasRights = (($plot->owner == $username || $plot->isHelper($username) ) && !$plot->locked);
+        $hasAdmin = (!$plot->locked && $event->getPlayer()->hasPermission("myplot.admin.build.plot"));
+        // even admins must unlock the plot first, great for preventing accidental damage
+        $canPlace = $hasRights || $hasAdmin;
+
+        if(!$canPlace) {
+            $msg = ($plot->locked) ? "This plot has been locked." : "You do not own this plot and are not a helper.";
+            $msg .= " " . TextFormat::DARK_GREEN . "Plot " . TextFormat::WHITE . $plot->id;
+            $msg .= " ($plot->X , $plot->Z) ";
+            $msg .= " " . TextFormat::DARK_GREEN . "Owner: " . TextFormat::WHITE . $plot->owner;
+            if($plot->name != "") {
+                    $msg .= " " . TextFormat::DARK_BLUE . $plot->name;
+            }
+            if( count($plot->helpers) > 0 ) {
+                    if($plot->helpers[0] != "") {
+                            $msg .= " " . TextFormat::DARK_GREEN . " with " .  implode(", ", $plot->helpers);
+                    }
+            }
+            $event->getPlayer()->sendMessage($msg);
+            $event->setCancelled(true);
+        }
+        
     }
 }

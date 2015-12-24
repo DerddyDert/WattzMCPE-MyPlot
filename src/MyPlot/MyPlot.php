@@ -164,6 +164,17 @@ class MyPlot extends PluginBase implements Listener
     }
 
     /**
+     * Returns plot from id number if exists
+     *
+     * @api
+     * @param Id $id
+     * @return Plot|null
+     */
+    public function getPlotById($id) {
+        return $this->dataProvider->getPlotById($id);
+    }
+    
+    /**
      * Finds the plot at a certain position or null if there is no plot at that position
      *
      * @api
@@ -392,11 +403,14 @@ class MyPlot extends PluginBase implements Listener
         $this->getServer()->getCommandMap()->register(Commands::class, new Commands($this));
 
         $cacheSize = $this->getConfig()->get("PlotCacheSize");
+        
         switch (strtolower($this->getConfig()->get("DataProvider"))) {
             case "sqlite":
+                die("sqlite not supported for myplot in this fork");
                 $this->dataProvider = new SQLiteDataProvider($this, $cacheSize);
                 break;
             default:
+                die("only mysql supported for myplot in this fork");
                 $this->dataProvider = new SQLiteDataProvider($this, $cacheSize);
                 break;
             case "mysql":

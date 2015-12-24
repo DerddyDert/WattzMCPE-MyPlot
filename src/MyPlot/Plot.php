@@ -3,7 +3,7 @@ namespace MyPlot;
 
 class Plot
 {
-    public $levelName, $X, $Z, $name, $owner, $helpers, $biome, $id;
+    public $levelName, $X, $Z, $name, $owner, $helpers, $biome, $id, $locked;
 
     /**
      * @param string $levelName
@@ -14,8 +14,11 @@ class Plot
      * @param array $helpers
      * @param string $biome
      * @param int $id
+     * @param int $locked
      */
-    public function __construct($levelName, $X, $Z, $name = "", $owner = "", $helpers = [], $biome = "PLAINS", $id = -1) {
+    public function __construct(
+            $levelName, $X, $Z, $name = "", $owner = "", $helpers = [], $biome = "PLAINS", $id = -1, $locked = false
+        ) {
         $this->levelName = $levelName;
         $this->X = $X;
         $this->Z = $Z;
@@ -24,6 +27,7 @@ class Plot
         $this->helpers = $helpers;
         $this->biome = $biome;
         $this->id = $id;
+        $this->locked = \is_null($locked) ? false : $locked;
     }
 
     /**

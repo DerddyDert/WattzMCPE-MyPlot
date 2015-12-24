@@ -39,6 +39,15 @@ abstract class DataProvider
         }
         return null;
     }
+    
+    protected final function getPlotFromCacheById($id) {
+        foreach($this->cache as $currentPlot) {
+            if($currentPlot->id == $id) {
+                return $currentPlot;
+            }
+        }
+        return null;
+    }
 
     /**
      * @param Plot $plot
@@ -59,6 +68,12 @@ abstract class DataProvider
      * @return Plot
      */
     public abstract function getPlot($levelName, $X, $Z);
+    
+    /**
+     * @param int $id
+     * @return Plot|null
+     */
+    public abstract function getPlotById($id);
 
     /**
      * @param string $owner

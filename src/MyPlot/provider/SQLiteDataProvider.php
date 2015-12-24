@@ -14,7 +14,7 @@ class SQLiteDataProvider extends DataProvider
     /** @var SQLite3Stmt */
     private $sqlGetPlot, $sqlSavePlot, $sqlSavePlotById, $sqlRemovePlot,
             $sqlRemovePlotById, $sqlGetPlotsByOwner, $sqlGetPlotsByOwnerAndLevel,
-            $sqlGetExistingXZ;
+            $sqlGetExistingXZ, $sqlGetPlotById;
 
     public function __construct(MyPlot $plugin, $cacheSize = 0) {
         parent::__construct($plugin, $cacheSize);
@@ -28,6 +28,9 @@ class SQLiteDataProvider extends DataProvider
 
         $this->sqlGetPlot = $this->db->prepare(
             "SELECT id, name, owner, helpers, biome FROM plots WHERE level = :level AND X = :X AND Z = :Z"
+        );
+        $this->sqlGetPlotById = $this->db->prepare(
+            "SELECT id, X, Z, level, name, owner, helpers, biome FROM plots WHERE id = :id"
         );
         $this->sqlSavePlot = $this->db->prepare(
             "INSERT OR REPLACE INTO plots (id, level, X, Z, name, owner, helpers, biome) VALUES
@@ -104,6 +107,29 @@ class SQLiteDataProvider extends DataProvider
         return true;
     }
 
+    public function getPlotById($id) {
+        if ($plot = $this->getPlotFromCacheById($id)) {
+            return $plot;
+        }
+        $this->sqlGetPlot->bindValue(":id", $id, SQLITE3_INTEGER);
+        $this->sqlGetPlot->reset();
+        $result = $this->sqlGetPlot->execute();
+        if ($val = $result->fetchArray(SQLITE3_ASSOC)) {
+            if ($val["helpers"] === null or $val["helpers"] === "") {
+                $helpers = [];
+            } else {
+                $helpers = explode(",", (string)$val["helpers"]);
+            }
+            $plot = new Plot( (string)$val["level"], (int)$val["X"], 
+                    (int)$val["Z"], (string)$val["name"], (string)$val["owner"],
+                    $helpers, (string)$val["biome"], (int)$val["id"]);
+        } else {
+            return null;
+        }
+        $this->cachePlot($plot);
+        return $plot;
+    }
+    
     public function getPlot($levelName, $X, $Z) {
         if ($plot = $this->getPlotFromCache($levelName, $X, $Z)) {
             return $plot;
