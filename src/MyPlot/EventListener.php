@@ -193,20 +193,20 @@ class EventListener implements Listener
         $canPlace = $hasRights || $hasAdmin;
 
         if(!$canPlace) {
-            $msg = ($plot->locked) ? "This plot has been locked." : "You do not own this plot and are not a helper.";
-            $msg .= " " . TextFormat::DARK_GREEN . "Plot " . TextFormat::WHITE . $plot->id;
-            $msg .= " ($plot->X , $plot->Z) ";
-            $msg .= " " . TextFormat::DARK_GREEN . "Owner: " . TextFormat::WHITE . $plot->owner;
-            if($plot->name != "") {
-                    $msg .= " " . TextFormat::DARK_BLUE . $plot->name;
-            }
-            if( count($plot->helpers) > 0 ) {
-                    if($plot->helpers[0] != "") {
-                            $msg .= " " . TextFormat::DARK_GREEN . " with " .  implode(", ", $plot->helpers);
-                    }
-            }
-            $event->getPlayer()->sendMessage($msg);
             $event->setCancelled(true);
+            
+            $ownerWithLock = ( ( $plot->owner == $username ) && $plot->locked );
+            $helperWithLock = ( ( $plot->isHelper($username) ) && $plot->locked );
+            
+            if( $ownerWithLock ) {
+                $msg = "Your plot is locked - you may unlock it with /plot unlock";
+            } elseif( $helperWithLock ) {
+                $msg = "This plot is locked by the owner - for owner info use /plot info";
+            } else {
+                $msg = "This plot does not belong to you and you are not a helper";
+            }
+            
+            @$event->getPlayer()->sendMessage($msg);
         }
         
     }
