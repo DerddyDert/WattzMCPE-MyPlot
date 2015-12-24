@@ -38,7 +38,7 @@ class InfoSubCommand extends SubCommand
         
         
         if( $plot->owner == "" ) {
-	    		$msg .= " " . TextFormat::DARK_RED. " Unclaimed";
+	    		$msg = TextFormat::DARK_RED. "Unclaimed Plot";
 	    		$sender->sendMessage($msg);
 		} else {
 			if( isset($args[0]) ) {
