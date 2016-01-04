@@ -22,26 +22,6 @@ class ClaimSubCommand extends SubCommand
     public function getDescription() {
         return "Claim the plot you're standing on";
     }
-    
-    public function hasPlayerVoted($playerName) {
-        $apikey = $this->getPlugin()->getConfig()->get("MPServers_voting_API_key");
-        $url = "http://minecraftpocket-servers.com/api/?object=votes&element=claim";
-        $url .= "&key=" . urlencode($apikey);
-        $url .= "&username=" . urlencode($playerName);
-        return file_get_contents($url);
-    }
-    
-    public function claimVoteReward($playerName) {
-        $apikey = $this->getPlugin()->getConfig()->get("MPServers_voting_API_key");
-        $url = "http://minecraftpocket-servers.com/api/?action=post&object=votes&element=claim";
-        $url .= "&key=" . urlencode($apikey);
-        $url .= "&username=" . urlencode($playerName);
-        $reponse = file_get_contents($url);
-        if($reponse != "1") {
-            $this->getPlugin()->getLogger()->warning("MyPlot - got an invalid response from minecraftpocket-servers api when " . $playerName . " tried to claim a vote reward. Reponse was " . $reponse);
-        }
-        return ($reponse == "1");
-    }
 
     public function getAliases() {
         return [];
@@ -89,11 +69,27 @@ class ClaimSubCommand extends SubCommand
         }
         
         $uses_voting_api = $this->getPlugin()->getUsesVotingAPI();
-        $needtovote = 0;
+        
         if($uses_voting_api) {
-	    $freePlotsBeforeVoting_global =  $this->getPlugin()->getConfig()->get("FreePlotsBeforeVoting");
-	    $votingURL = $this->getPlugin()->getConfig()->get("MPServers_voting_direct_URL");
+            $votingProvider = $this->getPlugin()->getVotingProvider();
+            if( ! $votingProvider->keyValidated() ) {
+                $votingProvider->validateAPIKey();
+            }
+            if( ! $votingProvider->keyValidated() ) {
+                $msg = TextFormat::RED . "Unfortunatley our server cannot reach ";
+                $msg .= "minecraftpocket-servers.com right now. ";
+                $msg .= "Please try again later.";
+                $sender->sendMessage($msg);
+                $msg =  TextFormat::RED . " rejected plot claim for " . $sender->getName();
+                $msg .= " as minecraftpocket-servers.com";
+                $msg .= " seems to be unreachable right now or invalid api key.";
+                $this->getPlugin()->getLogger()->error($msg);
+                return true;
+            }
+	    $freePlotsBeforeVoting_global =  $votingProvider->getFreePlotsBeforeVoting();
+	    $votingURL = $votingProvider->getVotingURL();
 	    $freePlotsBeforeVoting_level = $plotLevel->freePlotsBeforeVoting;
+            $needtovote = 0;
 	    if ($freePlotsBeforeVoting_level >= 0 and count($plotsOfPlayer) >= $freePlotsBeforeVoting_level) {
 		 $needtovote = 1;
 	    }
@@ -101,7 +97,7 @@ class ClaimSubCommand extends SubCommand
 		 $needtovote = 2;
 	    }
 	    if($needtovote > 0) {
-		$api_response=$this->hasPlayerVoted($player->getName());
+		$api_response=$votingProvider->hasPlayerVoted($player->getName());
 		switch($api_response) {
 		    case "0" :
 			$msg = TextFormat::RED . "You must vote for us to claim another plot";
@@ -118,21 +114,24 @@ class ClaimSubCommand extends SubCommand
 		    break;
 		    case "1" :
 			// 1 = has unclaimed vote - carry on
-			$this->getPlugin()->getLogger()->info($player->getName() . " has voted and is requesting a plot");
-		    break;
+                        $msg = $player->getName() . " has voted and is requesting a plot";
+			$this->getPlugin()->getLogger()->info($msg);
+                        break;
 		    case "2" :
 			$msg = TextFormat::RED . "You have already claimed your plot reward for voting today.";
 			$msg .= " You can vote and claim a new plot once every 24 hours.";
 			$sender->sendMessage($msg);
-			$this->getPlugin()->getLogger()->info($player->getName() . " could not claim a plot due to already voting");
+                        $msg = $player->getName() . " could not claim a plot due to already voting";
+			$this->getPlugin()->getLogger()->info($msg);
 			return true;
-		    break;
+                        break;
 		    default :
-			$msg = TextFormat::RED . "Something has gone - please try later.";
-			$sender->sendMessage($msg);
-			$this->getPlugin()->getLogger()->warning("Got an invalid response from minecraftpocket-servers api when " . $player->getName() . " tried to claim a plot. Reponse was " . $api_response);
+			$msg = TextFormat::RED . "Unfortunatley our server cannot reach ";
+                        $msg .= "minecraftpocket-servers.com right now. ";
+                        $msg .= "Please try again later.";
+                        $sender->sendMessage($msg);
 			return true;
-		    break;
+                        break;
 		}
 	    }
         }
@@ -140,8 +139,11 @@ class ClaimSubCommand extends SubCommand
         $plot->owner = $sender->getName();
         $plot->name = $name;
         if($needtovote) {
-	    if(!$this->claimVoteReward($player->getName())) {
-		$sender->sendMessage(TextFormat::RED . "Something went wrong claiming your vote - please try again later.");
+	    if( ! $votingProvider->claimVoteReward($player->getName())) {
+                $msg = TextFormat::RED . "Unfortunatley our server cannot reach ";
+                $msg .= "minecraftpocket-servers.com right now. ";
+                $msg .= "Please try again later.";
+                $sender->sendMessage($msg);
 		return true;
 	    }
         }

@@ -141,8 +141,9 @@ class MYSQLDataProvider extends DataProvider {
 	}
         
 	public function savePlot(Plot $plot) {
+                $plotAlreadyHadId = ($plot->id >= 0);
 		$helpers = implode ( ",", $plot->helpers );
-		if ($plot->id >= 0) {
+		if ($plotAlreadyHadId) {
 			$thisQueryName = "SavePlotById";
 			$bind_result = $this->db_statements [$thisQueryName]->bind_param (
                                 "ssssii", 
@@ -169,8 +170,24 @@ class MYSQLDataProvider extends DataProvider {
 			$this->criticalError ( "Could not execute query " . $thisQueryName . ":" . $err );
 			return false;
 		}
-		$this->db_statements [$thisQueryName]->free_result ();
-		$this->cachePlot ( $plot );
+                
+                $this->db_statements [$thisQueryName]->free_result ();
+                
+                /* if plot didnt have a save id remove it from cache
+                 * and reload it ( last insert id cannot be used here
+                 * due to the sql being a REPLACE INTO query )
+                **/
+                if( ! $plotAlreadyHadId ) {
+                    $this->removePlotFromCache($plot->levelName, $plot->X, $plot->Z);
+                    $plot = $this->getPlot($plot->levelName, $plot->X, $plot->Z);
+                    // getplot function will recache no need to call cachePlot
+                    $msg = "Saved plot to database, got new ID " . $plot->id;
+                    $this->plugin->getServer()->getLogger()->debug($msg);
+                } else {
+                    $msg = "Saved plot to database, existing ID " . $plot->id;
+                    $this->plugin->getServer()->getLogger()->debug($msg);
+                    $this->cachePlot ( $plot );
+                }
 		return true;
 	}
         

@@ -35,7 +35,8 @@ class Plot
      * @return bool
      */
     public function isHelper($username) {
-        return in_array($username, $this->helpers);
+        $helpers = array_map('strtolower', $this->helpers);
+        return in_array(strtolower($username), $helpers);
     }
 
     /**

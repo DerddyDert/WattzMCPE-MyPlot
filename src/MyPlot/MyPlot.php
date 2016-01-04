@@ -25,6 +25,7 @@ use pocketmine\level\Level;
 use MyPlot\provider\SQLiteDataProvider;
 use MyPlot\provider\MYSQLDataProvider;
 use MyPlot\provider\EconomyProvider;
+use MyPlot\provider\VotingProvider;
 
 class MyPlot extends PluginBase implements Listener
 {
@@ -36,8 +37,10 @@ class MyPlot extends PluginBase implements Listener
     private $dataProvider;
     /** @var EconomyProvider */
     private $economyProvider;
-    /** @var usesVotingAPI */
+    /** @var boolean */
     private $usesVotingAPI;
+    /** @var VotingProvider */
+    private $votingProvider;
 
     /**
      * @api
@@ -69,12 +72,19 @@ class MyPlot extends PluginBase implements Listener
     
     /**
      * Returns status of voting API in use
-     *
      * @api
      * @return bool
      */
      public function getUsesVotingAPI() {
 	return $this->usesVotingAPI;
+     }
+     
+     /**
+      * @api
+      * @return VotingProvider
+      */
+     public function getVotingProvider() {
+         return $this->votingProvider;
      }
      
     /**
@@ -398,7 +408,6 @@ class MyPlot extends PluginBase implements Listener
         $this->reloadConfig();
         $this->getLogger()->info(TextFormat::GREEN."Loading the Plot Framework!");
         $this->getLogger()->warning(TextFormat::YELLOW."It seems that you are running the development build of MyPlot! Thats cool, but it CAN be very, very buggy! Just be careful when using this plugin and report any issues to".TextFormat::GOLD." http://github.com/wiez/MyPlot/issues");
-
         $this->getServer()->getPluginManager()->registerEvents(new EventListener($this), $this);
         $this->getServer()->getCommandMap()->register(Commands::class, new Commands($this));
 
@@ -432,25 +441,12 @@ class MyPlot extends PluginBase implements Listener
         
         $this->usesVotingAPI = false;
         if ($this->getConfig()->get("UseMPServers_voting") == true) {
-	    // validate api key
-	    $votingAPIKey = $this->getConfig()->get("MPServers_voting_API_key");
-	    $url = "http://minecraftpocket-servers.com/api/?object=servers&element=detail";
-	    $url .= "&key=" . urlencode($votingAPIKey);
-	    $response_raw = file_get_contents($url);
-	    $response = json_decode($response_raw);
-	    if(json_last_error() != JSON_ERROR_NONE) {
-		$err = TextFormat::RED. "Could not validate your minecraftpocket-servers.com API key!";
-		$err .= " Server response was '" . TextFormat::YELLOW . $response_raw ."'";
-		$this->getLogger()->warning($err);
-	    } elseif (!isset($response->name)) {
-		$err = TextFormat::RED. "Could not validate your minecraftpocket-servers.com API key!";
-		$err .= " Server response was '" . TextFormat::YELLOW . $response_raw ."'";
-		$this->getLogger()->warning($err);
-	    } else {
-		$infoMessage = "Voting enabled for " . $response->name;
-		$this->getLogger()->info(TextFormat::GREEN.$infoMessage);
-		$this->usesVotingAPI = true;
-	    }
+            $this->usesVotingAPI = true;
+            $apiKey = $this->getConfig()->get("MPServers_voting_API_key");
+            $votingURL = $this->getConfig()->get("MPServers_voting_direct_URL");
+            $freePlotsBeforeVoting = $this->getConfig()->get("FreePlotsBeforeVoting");
+            $this->votingProvider = new VotingProvider(
+                    $this, $apiKey, $freePlotsBeforeVoting, $votingURL);
         }
     }
 

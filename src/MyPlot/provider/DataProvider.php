@@ -29,6 +29,16 @@ abstract class DataProvider
             $this->cache = array_merge(array($key => clone $plot), $this->cache);
         }
     }
+    
+    protected final function removePlotFromCache($levelName, $X, $Z) {
+        if ($this->cacheSize > 0) {
+            $key = $levelName . ';' . $X . ';' . $Z;
+            if (isset($this->cache[$key])) {
+                unset($this->cache[$key]);
+            }
+        }
+        return null;
+    }
 
     protected final function getPlotFromCache($levelName, $X, $Z) {
         if ($this->cacheSize > 0) {
