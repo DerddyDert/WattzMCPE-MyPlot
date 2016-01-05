@@ -449,7 +449,10 @@ class MyPlot extends PluginBase implements Listener
                     $this, $apiKey, $freePlotsBeforeVoting, $votingURL);
         }
         
-        $chatFormatter = new \MyPlot\ChatMessageFormatter($this);
+        $bcPlugin = $this->getServer()->getPluginManager()->getPlugin("BuddyChannels");
+        if( ! is_null($bcPlugin) ) {
+            $chatFormatter = new \MyPlot\ChatMessageFormatter($this);
+        }
     }
 
     public function addLevelSettings($levelName, PlotLevelSettings $settings) {
