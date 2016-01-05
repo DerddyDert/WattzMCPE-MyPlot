@@ -448,6 +448,8 @@ class MyPlot extends PluginBase implements Listener
             $this->votingProvider = new VotingProvider(
                     $this, $apiKey, $freePlotsBeforeVoting, $votingURL);
         }
+        
+        $chatFormatter = new \MyPlot\ChatMessageFormatter($this);
     }
 
     public function addLevelSettings($levelName, PlotLevelSettings $settings) {
