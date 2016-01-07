@@ -20,7 +20,7 @@ class ClearSubCommand extends SubCommand
     }
 
     public function getDescription() {
-        return "Clear the plot you are standing on";
+        return "Clear the plot you are standing on back to an empty plot";
     }
 
     public function getAliases() {
@@ -28,16 +28,21 @@ class ClearSubCommand extends SubCommand
     }
 
     public function execute(CommandSender $sender, array $args) {
-        if (!empty($args)) {
-            return false;
-        }
+        $argString = strtolower(implode(" ", $args));
+        
         $player = $sender->getServer()->getPlayer($sender->getName());
         $plot = $this->getPlugin()->getPlotByPosition($player->getPosition());
+        $senderIsAdmin = $sender->hasPermission("myplot.admin.clear");
+        $senderIsPlotOwner = ($plot->owner == $sender->getName());
+        $clearCommandParm = "yes i really want to clear this";
+        $adminClearCommandParm = "confirm";
+        
         if ($plot === null) {
             $sender->sendMessage(TextFormat::RED . "You are not standing inside a plot");
             return true;
         }
-        if ($plot->owner !== $sender->getName() and !$sender->hasPermission("myplot.admin.clear")) {
+        
+        if ( ! $senderIsPlotOwner and ! $senderIsAdmin ) {
             $sender->sendMessage(TextFormat::RED . "You are not the owner of this plot");
             return true;
         }
@@ -46,6 +51,24 @@ class ClearSubCommand extends SubCommand
         $price = $this->getPlugin()->getLevelSettings($plot->levelName)->clearPrice;
         if ($economy !== null and !$economy->reduceMoney($player, $price)) {
             $sender->sendMessage(TextFormat::RED . "You don't have enough money to clear this plot");
+            return true;
+        }
+
+        if( $argString != $clearCommandParm and ! $senderIsAdmin ) {
+            $msg  = TextFormat::GREEN . "This command will completley ";
+            $msg .= TextFormat::RED . "WIPE YOUR PLOT";
+            $msg .= TextFormat::GREEN . " and surrounding road. ";
+            $msg .= TextFormat::WHITE . "If you really want to do this type ";
+            $msg .= TextFormat::DARK_PURPLE . "/p clear " . $clearCommandParm;
+            $sender->sendMessage($msg);
+            return true;
+        } elseif ( $argString != $adminClearCommandParm and $senderIsAdmin ) {
+            $msg  = TextFormat::GREEN . "This command will completley ";
+            $msg .= TextFormat::RED . "WIPE THE PLOT";
+            $msg .= TextFormat::GREEN . " beloning to " . $plot->owner . ". ";
+            $msg .= TextFormat::WHITE . "If you really want to do this type ";
+            $msg .= TextFormat::DARK_PURPLE . "/p clear " . $adminClearCommandParm;
+            $sender->sendMessage($msg);
             return true;
         }
 
