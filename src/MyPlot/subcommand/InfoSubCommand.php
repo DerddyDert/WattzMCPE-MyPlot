@@ -47,16 +47,18 @@ class InfoSubCommand extends SubCommand
 		} else {
 			if( isset($args[0]) ) {
                                 $msg = TextFormat::DARK_GREEN . "Plot " . TextFormat::WHITE . $plot->id;
-                                $msg .= " ($plot->X , $plot->Z) ";
-				$msg .= TextFormat::DARK_GREEN . "Owner: " . TextFormat::WHITE . $plot->owner;
+                                $msg .= " ($plot->X , $plot->Z) \n";
+				$msg .= TextFormat::DARK_GREEN . "Owner: " . TextFormat::WHITE . $plot->owner . "\n";
 				if($plot->name != "") {
-					$msg .= " " . TextFormat::DARK_BLUE . $plot->name;
+					$msg .= TextFormat::DARK_GREEN . "Name: " . TextFormat::WHITE . $plot->name . "\n";
 				}
+/*
 				if( count($plot->helpers) > 0 ) {
 					if($plot->helpers[0] != "") {
 						$msg .= " " . TextFormat::DARK_GREEN . " with " .  implode(", ", $plot->helpers);
 					}
 				}
+*/
 				$sender->sendTip($msg);
 			} else {
                             $pos = " ($plot->X , $plot->Z) ";
