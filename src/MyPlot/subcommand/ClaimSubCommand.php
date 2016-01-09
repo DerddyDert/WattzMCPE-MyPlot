@@ -28,6 +28,7 @@ class ClaimSubCommand extends SubCommand
     }
 
     public function execute(CommandSender $sender, array $args) {
+        $needtovote = false;
         if (count($args) > 1) {
             return false;
         }

@@ -39,7 +39,11 @@ class InfoSubCommand extends SubCommand
         
         if( $plot->owner == "" ) {
 	    		$msg = TextFormat::DARK_RED. "Unclaimed Plot";
-	    		$sender->sendMessage($msg);
+                        if( isset($args[0]) ) {
+                            $sender->sendTip($msg);
+                        } else {
+                            $sender->sendMessage($msg);
+                        }
 		} else {
 			if( isset($args[0]) ) {
                                 $msg = TextFormat::DARK_GREEN . "Plot " . TextFormat::WHITE . $plot->id;
@@ -53,7 +57,7 @@ class InfoSubCommand extends SubCommand
 						$msg .= " " . TextFormat::DARK_GREEN . " with " .  implode(", ", $plot->helpers);
 					}
 				}
-				$sender->sendMessage($msg);
+				$sender->sendTip($msg);
 			} else {
                             $pos = " ($plot->X , $plot->Z) ";
                             $sender->sendMessage(TextFormat::DARK_GREEN. "Position: " . TextFormat::WHITE . $pos);
