@@ -32,6 +32,7 @@ MPServers_voting_direct_URL: none
 FreePlotsBeforeVoting: 1
 #How many plots can be claimed before voting is required (UseMPServers_voting must be set to 'true')
 PlotCacheSize: 100
+CacheAllPlots: true
 
 DefaultWorld:
   MaxPlotsPerPlayer: 5 

@@ -211,8 +211,14 @@ class MyPlot extends PluginBase implements Listener
         $x -= $halfRoadWidth;
         $z -= $halfRoadWidth;
         
-        $X = ceil(($x - $plotSize + 1) / $totalSize); // dont forget the +1 is the offset in clearplottask too
+        // dont forget the +1 is the offset in clearplottask too
+        $X = ceil(($x - $plotSize + 1) / $totalSize); 
         $Z = ceil(($z - $plotSize + 1) / $totalSize);
+        
+        // sometimes ciel returns a string "-0" - cast to int to be sure
+        $X = (int)$X;
+        $Z = (int)$Z;
+        
         /* 
         if ($x >= 0) {
             $X = floor($x / $totalSize);
@@ -412,6 +418,7 @@ class MyPlot extends PluginBase implements Listener
         $this->getServer()->getCommandMap()->register(Commands::class, new Commands($this));
 
         $cacheSize = $this->getConfig()->get("PlotCacheSize");
+        $cacheAll = ($this->getConfig()->get("CacheAllPlots") == true);
         
         switch (strtolower($this->getConfig()->get("DataProvider"))) {
             case "sqlite":
@@ -423,7 +430,7 @@ class MyPlot extends PluginBase implements Listener
                 $this->dataProvider = new SQLiteDataProvider($this, $cacheSize);
                 break;
             case "mysql":
-		$this->dataProvider = new MYSQLDataProvider($this, $cacheSize);
+		$this->dataProvider = new MYSQLDataProvider($this, $cacheSize, $cacheAll);
                 break;
         }
 

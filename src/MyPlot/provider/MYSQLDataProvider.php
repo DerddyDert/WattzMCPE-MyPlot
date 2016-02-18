@@ -12,14 +12,14 @@ class MYSQLDataProvider extends DataProvider {
 	private $db_statements;
         
         
-	public function __construct(MyPlot $plugin, $cacheSize = 0) {
-		parent::__construct ( $plugin, $cacheSize );
-		$mysqlhost = $plugin->getConfig()->get("mysqlhost");
+	public function __construct(MyPlot $plugin, $cacheSize = 0, $cacheAll = false) {
+            parent::__construct ( $plugin, $cacheSize, $cacheAll );
+            $mysqlhost = $plugin->getConfig()->get("mysqlhost");
             $mysqluser = $plugin->getConfig()->get("mysqluser");
             $mysqlpass = $plugin->getConfig()->get("mysqlpass");
             $mysqldb = $plugin->getConfig()->get("mysqldb");
-                    $this->db = new \mysqli ( $mysqlhost, $mysqluser, $mysqlpass, $mysqldb );
-                    $this->db->query ( "CREATE TABLE IF NOT EXISTS `plots`
+            $this->db = new \mysqli ( $mysqlhost, $mysqluser, $mysqlpass, $mysqldb );
+            $this->db->query ( "CREATE TABLE IF NOT EXISTS `plots`
                  (id INTEGER PRIMARY KEY auto_increment, 
                   level TEXT, 
                   X INTEGER, 
@@ -40,12 +40,23 @@ class MYSQLDataProvider extends DataProvider {
             $queryName = "GetPlotById"; // i id
             $sql = "SELECT id, X, Z, level, name, owner, helpers, biome, locked FROM plots WHERE id = ?;";
             $this->checkPreparedStatement ( $queryName, $sql );
+            
+            $queryName = "GetAllPlots";
+            $sql = "SELECT id, X, Z, level, name, owner, helpers, biome, locked FROM plots;";
+            $this->checkPreparedStatement ( $queryName, $sql );
 
             $queryName = "SavePlot"; // siisiissss level, X, Z, level, X, Z, name, owner, helpers, biome
             $sql = "
                 REPLACE INTO plots (id, level, X, Z, name, owner, helpers, biome, locked) VALUES
                 ((select id from plots AS tmp where level = ? AND X = ? AND Z = ?),
                  ?, ?, ?, ?, ?, ?, ?, ?);";
+            $this->checkPreparedStatement ( $queryName, $sql );
+            
+            // only to be used when we have a full cache ($this->cacheAll = true _
+            $queryName = "SaveNewPlot"; // siisiissss level, X, Z, level, X, Z, name, owner, helpers, biome
+            $sql = "
+                INSERT INTO plots (level, X, Z, name, owner, helpers, biome, locked) VALUES
+                ( ?, ?, ?, ?, ?, ?, ?, ?);";
             $this->checkPreparedStatement ( $queryName, $sql );
 
             $queryName = "SavePlotById"; // ssssi
@@ -120,6 +131,12 @@ class MYSQLDataProvider extends DataProvider {
                 LIMIT 1;
             ";
             $this->checkPreparedStatement ( $queryName, $sql );
+            
+            if($this->cacheAll) {
+                $this->plugin->getLogger()->info("Preloading ALL plot data");
+                $this->getAllPlots();
+                $this->plugin->getLogger()->info("Loaded plots - count is " . count($this->cache));
+            }
 	}
         
 	private function criticalError($errmsg) {
@@ -149,7 +166,7 @@ class MYSQLDataProvider extends DataProvider {
                                 "ssssii", 
                                 $plot->name, $plot->owner, $helpers, $plot->biome, $plot->locked, $plot->id
                         );
-		} else {
+		} elseif( ! $this->cacheAll) {
 			$thisQueryName = "SavePlot";
 			$bind_result = $this->db_statements [$thisQueryName]->bind_param (
                                 "siisiissssi", 
@@ -157,7 +174,15 @@ class MYSQLDataProvider extends DataProvider {
                                 $plot->X, $plot->Z, $plot->name, $plot->owner, 
                                 $helpers, $plot->biome, $plot->locked
                         );
-		}
+		} else { // implies $this->cacheAll=true
+                        $thisQueryName = "SaveNewPlot";
+			$bind_result = $this->db_statements [$thisQueryName]->bind_param (
+                                "siissssi", 
+                                $plot->levelName, 
+                                $plot->X, $plot->Z, $plot->name, $plot->owner, 
+                                $helpers, $plot->biome, $plot->locked
+                        );
+                }
 		
 		if ($bind_result === false) {
 			$err = $this->db_statements [$thisQueryName]->error;
@@ -170,23 +195,31 @@ class MYSQLDataProvider extends DataProvider {
 			$this->criticalError ( "Could not execute query " . $thisQueryName . ":" . $err );
 			return false;
 		}
+                if( $thisQueryName == "SaveNewPlot" ) {
+                    $plot->id = $this->db->insert_id;
+                }
                 
                 $this->db_statements [$thisQueryName]->free_result ();
                 
-                /* if plot didnt have a save id remove it from cache
-                 * and reload it ( last insert id cannot be used here
-                 * due to the sql being a REPLACE INTO query )
-                **/
+                
                 if( ! $plotAlreadyHadId ) {
+                    $msg = "Saved plot to database, existing ID " . $plot->id;
+                    $this->plugin->getServer()->getLogger()->debug($msg);
+                    $this->cachePlot ( $plot );
+                } elseif( ! $this->cacheAll ) {
+                    /* if plot didnt have a save id remove it from cache
+                     * and reload it ( last insert id cannot be used here
+                     * due to the sql being a REPLACE INTO query )
+                     **/
                     $this->removePlotFromCache($plot->levelName, $plot->X, $plot->Z);
                     $plot = $this->getPlot($plot->levelName, $plot->X, $plot->Z);
                     // getplot function will recache no need to call cachePlot
                     $msg = "Saved plot to database, got new ID " . $plot->id;
                     $this->plugin->getServer()->getLogger()->debug($msg);
-                } else {
-                    $msg = "Saved plot to database, existing ID " . $plot->id;
+                } else { // implies $thisQueryName == "SaveNewPlot"
+                    $this->cachePlot($plot);
+                    $msg = "Saved new plot $plot->X, $plot->Z to database , insert_id " . $plot->id;
                     $this->plugin->getServer()->getLogger()->debug($msg);
-                    $this->cachePlot ( $plot );
                 }
 		return true;
 	}
@@ -223,11 +256,20 @@ class MYSQLDataProvider extends DataProvider {
 		return true;
 	}
         
+        /**
+         * @param int $id
+         * @return boolean|Plot|null
+         */
         public function getPlotById($id) {
 		if ($plot = $this->getPlotFromCacheById ( $id )) {
-                        echo "DEBUG: ". $plot . "\n";
 			return $plot;
 		}
+                // if set to load all plots at startup we dont need to check database
+                // for the plots existence just return null
+                if($this->cacheAll) {
+                    return null;
+                }
+                
 		$thisQueryName = "GetPlotById";
 		$bind_result = $this->db_statements [$thisQueryName]->bind_param (
                         "i", $id
@@ -273,10 +315,15 @@ class MYSQLDataProvider extends DataProvider {
 		return $plot;
 	}
         
-	public function getPlot($levelName, $X, $Z) {
+        public function getPlot($levelName, $X, $Z) {
 		if ($plot = $this->getPlotFromCache ( $levelName, $X, $Z )) {
 			return $plot;
 		}
+                // if set to load all plots at startup we dont need to check database
+                // for the plots existence just return empty
+                if($this->cacheAll) {
+                    return new Plot ( $levelName, $X, $Z );
+                }
 		
 		$thisQueryName = "GetPlot";
 		$bind_result = $this->db_statements [$thisQueryName]->bind_param (
@@ -322,7 +369,45 @@ class MYSQLDataProvider extends DataProvider {
 		return $plot;
 	}
         
+	public function getAllPlots() {
+		$thisQueryName = "GetAllPlots";
+                
+		$exec_result = $this->db_statements [$thisQueryName]->execute ();
+		if ($exec_result === false) {
+			$err = $this->db_statements [$thisQueryName]->error;
+			$this->criticalError ( "Could not execute query " . $thisQueryName . ": " . $err );
+			return false;
+		}
+		
+		$result = $this->db_statements [$thisQueryName]->bind_result ( 
+                        $id, $X, $Z, $levelName, $name, $owner, $helpers_csv, $biome, $locked
+                );
+		if ($result === false) {
+			$err = $this->db_statements [$thisQueryName]->error;
+			$this->criticalError ( "Failed to bind result " . $thisQueryName . ": " . $err );
+			return false;
+		}
+		
+		while ($this->db_statements [$thisQueryName]->fetch ()) {
+			if (is_null ( $helpers_csv )) {
+				$helpers = array ();
+			} else {
+				$helpers = explode ( ",", ( string ) $helpers_csv );
+			}
+			$plot = new Plot (
+                                $levelName, $X, $Z, ( string ) $name, $owner, 
+                                $helpers, ( string ) $biome, ( int ) $id, $locked );
+                        $key = $levelName . ';' . $X . ';' . $Z;
+                        $this->cache[$key] = $plot;
+                }
+		$this->db_statements [$thisQueryName]->free_result ();
+	}
+        
 	public function getPlotsByOwner($owner, $levelName = "") {
+                if($this->cacheAll) {
+                    return $this->cache_getPlotsByOwner($owner, $levelName);
+                }
+            
 		if ($levelName == "") {
 			$thisQueryName = "getPlotsByOwner";
 			$bind_result = $this->db_statements [$thisQueryName]->bind_param ( "s", $owner );
@@ -379,6 +464,10 @@ class MYSQLDataProvider extends DataProvider {
 			$currentX = - 99999;
 		if (is_null ( $currentZ ))
 			$currentZ = - 99999;
+                
+                if($this->cacheAll) {
+                    return $this->cache_getNextFreePlot($levelName, $limitXZ, $currentX, $currentZ);
+                }
 		
 		$thisQueryName = "GetFreeXZ";
 		
@@ -407,7 +496,6 @@ class MYSQLDataProvider extends DataProvider {
 		$potential_plots = array ();
 		
 		while ( $this->db_statements [$thisQueryName]->fetch () ) {
-			// echo $X.",". $Z.",". $xm1.",". $xp1.",". $zm1.",". $zp1.",". $xp1zp1.",". $xm1zm1.",". $xp1zm1.",". $xm1zp1.PHP_EOL;
 			if ($xm1) { // x-1
 				$potential_plots [] = new Plot ( $levelName, $X - 1, $Z );
                         }
